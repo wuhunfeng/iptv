@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-// 简单账号密码，你可以自行修改
+// 简单账号密码，自行修改
 const (
 	adminUser = "admin"
 	adminPwd  = "admin123"
@@ -31,7 +31,7 @@ func main() {
 		_, _ = w.Write([]byte("IPTV Control Center Go Version | Running OK <br><a href='/login'>前往登录</a>"))
 	})
 
-	// 登录页面 GET
+	// 登录页面 GET / 提交 POST
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "text/html;charset=utf-8")
@@ -55,7 +55,6 @@ func main() {
 			return
 		}
 
-		// 登录提交 POST
 		user := r.PostFormValue("user")
 		pwd := r.PostFormValue("pwd")
 		if user == adminUser && pwd == adminPwd {
@@ -79,10 +78,21 @@ func main() {
 <h2>✅ IPTV Control Center 后台面板</h2>
 <p>当前服务运行正常</p>
 <p><a href="/health">健康检查 /health</a></p>
+<p><a href="/m3u">获取M3U订阅</a></p>
 <p><a href="/">返回首页</a></p>
 </body>
 </html>`
 		_, _ = w.Write([]byte(html))
+	})
+
+	// m3u订阅输出接口
+	http.HandleFunc("/m3u", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+		m3uContent := `#EXTM3U
+#EXTINF:-1 tvg-name="测试频道" tvg-logo="",测试频道
+http://example.com/live.m3u8
+`
+		_, _ = w.Write([]byte(m3uContent))
 	})
 
 	fmt.Printf("✅ Server listen on %s\n", addr)
