@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 )
@@ -10,6 +11,7 @@ import (
 const (
 	adminUser = "admin"
 	adminPwd  = "admin123"
+	dataPath  = "/data/source.txt"
 )
 
 func main() {
@@ -77,6 +79,12 @@ func main() {
 <body>
 <h2>✅ IPTV Control Center 后台面板</h2>
 <p>当前服务运行正常</p>
+<h4>拉取直播源</h4>
+<form action="/fetch" method="post">
+源地址：<input type="text" name="url" style="width:400px;" placeholder="https://xxx/xxx.m3u"><br><br>
+<button type="submit">开始拉取并保存 source.txt</button>
+</form>
+<p><a href="/source.txt">查看/下载 source.txt</a></p>
 <p><a href="/health">健康检查 /health</a></p>
 <p><a href="/m3u">获取M3U订阅</a></p>
 <p><a href="/">返回首页</a></p>
@@ -85,7 +93,54 @@ func main() {
 		_, _ = w.Write([]byte(html))
 	})
 
-	// m3u订阅输出接口
+	// 拉取源并保存
+	http.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.Write([]byte("仅支持POST提交"))
+			return
+		}
+		url := r.PostFormValue("url")
+		if url == "" {
+			w.Write([]byte("URL不能为空 <br><a href='/dashboard'>返回面板</a>"))
+			return
+		}
+
+		resp, err := http.Get(url)
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("拉取失败：%v <br><a href='/dashboard'>返回面板</a>", err)))
+			return
+		}
+		defer resp.Body.Close()
+
+		// 读取内容
+		content, err := io.ReadAll(resp.Body)
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("读取内容失败：%v <br><a href='/dashboard'>返回面板</a>", err)))
+			return
+		}
+
+		// 写入文件
+		err = os.WriteFile(dataPath, content, 0644)
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("写入文件失败：%v <br><a href='/dashboard'>返回面板</a>", err)))
+			return
+		}
+
+		w.Write([]byte("✅ 拉取成功，已保存到 source.txt <br><a href='/source.txt'>查看文件</a> | <a href='/dashboard'>返回面板</a>"))
+	})
+
+	// 对外提供source.txt访问
+	http.HandleFunc("/source.txt", func(w http.ResponseWriter, r *http.Request) {
+		content, err := os.ReadFile(dataPath)
+		if err != nil {
+			w.Write([]byte("文件不存在，请先拉取源"))
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain;charset=utf-8")
+		_, _ = w.Write(content)
+	})
+
+	// m3u订阅输出接口（可以读取source.txt输出m3u，这里先保留原有示例）
 	http.HandleFunc("/m3u", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 		m3uContent := `#EXTM3U
