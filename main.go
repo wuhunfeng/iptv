@@ -10,7 +10,7 @@ func main() {
 	// 读取botkeep自动注入的PORT环境变量
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "3000"
+		port = "57516"
 	}
 	addr := fmt.Sprintf("0.0.0.0:%s", port)
 
